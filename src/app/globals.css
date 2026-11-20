@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { font-size: 18px; }
+  body { @apply bg-paper text-navy antialiased; }
+  h1, h2, h3 { text-wrap: balance; }
+  :focus-visible { outline: 3px solid #e8891c; outline-offset: 2px; }
+  input, select, textarea {
+    @apply w-full rounded-lg border-2 border-line bg-white px-3 py-2.5 text-navy min-h-[48px];
+  }
+  input[type="checkbox"] { @apply w-6 h-6 min-h-0 p-0 accent-kesri; }
+  label > span.lbl { @apply block font-bold text-[0.95rem] mb-1.5; }
+}
+
+@layer components {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .eyebrow { @apply text-[0.78rem] uppercase tracking-wider font-bold text-muted; }
+}

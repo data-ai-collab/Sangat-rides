@@ -1,0 +1,84 @@
+// Sangat Rides — Sunday ride-share for Sri Guru Singh Sabha, Revesby
+// Postgres on Neon. Status/role fields are plain strings (no enums) for portability.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// An attendee who needs a lift.
+model Rider {
+  id         String   @id @default(cuid())
+  name       String
+  phone      String   @unique // digits only, AU format e.g. 0412345678
+  address    String
+  suburb     String
+  language   String   @default("Punjabi")
+  needs      String   @default("") // comma-separated: Walker, Folding wheelchair, ...
+  notes      String   @default("")
+  status     String   @default("ACTIVE") // NEW (self-registered, not yet checked) | ACTIVE | INACTIVE
+  createdVia String   @default("DESK") // DESK | APP | VOICE
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  trips      Trip[]
+}
+
+/// A volunteer driver. Signs in with phone + PIN.
+model Driver {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  email     String   @default("") // for ride alerts and the Saturday digest (via Brevo)
+  suburb    String
+  seats     Int      @default(3)
+  pinHash   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  trips     Trip[]
+}
+
+/// One leg of a Sunday ride.
+/// leg:    TO (home -> Gurdwara, arrive 9am–12pm) | FROM (Gurdwara -> home, leave 1pm–4pm)
+/// status: REQUESTED -> CLAIMED -> ONBOARD -> DONE, or CANCELLED
+model Trip {
+  id          String    @id @default(cuid())
+  date        String // YYYY-MM-DD (a Sunday, Sydney time)
+  leg         String
+  time        String // HH:MM, 24h
+  status      String    @default("REQUESTED")
+  channel     String    @default("DESK") // DESK | APP | VOICE
+  note        String    @default("")
+  riderId     String
+  rider       Rider     @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  driverId    String?
+  driver      Driver?   @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  claimedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([date, riderId, leg])
+  @@index([date, status])
+}
+
+/// Callers the phone line didn't recognise, or who asked for a call back.
+model CallbackRequest {
+  id        String   @id @default(cuid())
+  phone     String
+  reason    String   @default("")
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+/// Key/value settings, e.g. rideLine, coordinator.
+model Setting {
+  key   String @id
+  value String
+}
