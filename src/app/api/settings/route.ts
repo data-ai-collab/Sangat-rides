@@ -18,8 +18,10 @@ export async function PUT(req: Request) {
   const coordinatorEmail = str(b?.coordinatorEmail, 120);
   if (coordinatorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coordinatorEmail)) return fail("Check the coordinator email address.");
   const entries = { rideLine: str(b?.rideLine, 40), coordinator: str(b?.coordinator, 80), coordinatorEmail };
-  for (const [key, value] of Object.entries(entries)) {
-    await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
-  }
+  await prisma.$transaction(
+    Object.entries(entries).map(([key, value]) =>
+      prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } })
+    )
+  );
   return ok(entries);
 }

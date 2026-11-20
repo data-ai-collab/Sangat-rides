@@ -19,7 +19,26 @@ export function Admin() {
   const [editDriver, setEditDriver] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [settings, setSettings] = useState<SettingsState>({ rideLine: "", coordinator: "", coordinatorEmail: "" });
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState("");
   const toast = useToast();
+
+  async function saveSettings() {
+    setSaveState("saving");
+    setSaveError("");
+    try {
+      await api("/api/settings", {
+        method: "PUT",
+        body: { rideLine: settings.rideLine, coordinator: settings.coordinator, coordinatorEmail: settings.coordinatorEmail },
+      });
+      await load();
+      setSaveState("saved");
+      setTimeout(() => setSaveState((s) => (s === "saved" ? "idle" : s)), 6000);
+    } catch (e) {
+      setSaveError((e as Error).message);
+      setSaveState("error");
+    }
+  }
 
   const load = useCallback(async () => {
     const [r, d, s] = await Promise.all([
@@ -159,7 +178,7 @@ export function Admin() {
               className="flex flex-col gap-3"
               onSubmit={(e) => {
                 e.preventDefault();
-                run(() => api("/api/settings", { method: "PUT", body: settings }), "Settings saved.");
+                if (saveState !== "saving") saveSettings();
               }}
             >
               <label>
@@ -174,7 +193,17 @@ export function Admin() {
                 <span className="lbl">Coordinator email (gets every new request and the Saturday summary)</span>
                 <input type="email" value={settings.coordinatorEmail} onChange={(e) => setSettings({ ...settings, coordinatorEmail: e.target.value })} />
               </label>
-              <div><Button variant="dark" type="submit">Save settings</Button></div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="dark" type="submit" disabled={saveState === "saving"}>
+                  {saveState === "saving" ? "Saving…" : "Save settings"}
+                </Button>
+                {saveState === "saved" && (
+                  <span role="status" className="font-bold text-emerald-700">✓ Saved</span>
+                )}
+                {saveState === "error" && (
+                  <span role="alert" className="font-bold text-red-700">Not saved: {saveError}</span>
+                )}
+              </div>
             </form>
             <div className="rounded-lg bg-navy-50 px-4 py-3 text-[0.95rem] flex flex-col gap-1">
               <b>Notifications (Brevo)</b>
